@@ -1,0 +1,22 @@
+{
+    "name": "Ansible",
+    "dockerFile": "Dockerfile",
+  
+    "settings": {
+      "workbench.colorTheme": "Atom One Light",
+      "terminal.integrated.defaultProfile.linux": "bash",
+      "terminal.integrated.cursorBlinking": true,
+      "terminal.integrated.cursorStyle": "underline",
+    },
+  
+    "extensions": [
+        "tomaciazek.ansible",
+        "oderwat.indent-rainbow",
+        "pascalreitermann93.vscode-yaml-sort",
+        "akamud.vscode-theme-onelight"
+    ],
+
+    "postCreateCommand": "ansible-galaxy collection install -r requirements.yml",
+
+    "mounts": ["source=${localEnv:USERPROFILE}/.azure,target=/root/.azure,type=bind,consistency=cached"]
+  }

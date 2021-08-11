@@ -1,0 +1,21 @@
+---
+- hosts: linux
+  collections:
+    - nginxinc.nginx_core
+  roles:
+    - role: nginx
+  become: true
+
+  tasks:
+    - name: copy index.html
+      copy:
+        src: index.html
+        dest: /usr/share/nginx/html/index.html
+        mode: 0644
+      become: true
+
+    - name: start nginx service
+      service:
+        name: nginx
+        state: started
+      become: true

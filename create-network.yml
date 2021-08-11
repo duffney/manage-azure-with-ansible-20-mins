@@ -1,0 +1,26 @@
+- hosts: localhost
+  connection: localhost
+
+  vars:
+    prefix: demo
+    location: eastus
+
+  tasks:
+
+  - name: Create resource group
+    azure_rm_resourcegroup:
+      name: "{{ prefix }}-rg"
+      location: eastus
+
+  - name: Create virtual network
+    azure_rm_virtualnetwork:
+      resource_group: "{{ prefix }}-rg"
+      name: "{{ prefix }}-vnet"
+      address_prefixes: "10.0.0.0/16"
+
+  - name: Add subnet
+    azure_rm_subnet:
+      resource_group: "{{ prefix }}-rg"
+      name: "{{ prefix }}-subnet"
+      address_prefix: "10.0.1.0/24"
+      virtual_network: "{{ prefix }}-vnet"

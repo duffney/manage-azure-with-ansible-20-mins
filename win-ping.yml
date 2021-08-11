@@ -1,0 +1,17 @@
+- hosts: windows
+  gather_facts: false
+
+  vars_prompt:
+    - name: password
+      prompt: "Enter local administrator password"
+
+  vars:
+    ansible_user: azureuser
+    ansible_password: "{{ password }}"
+    ansible_connection: winrm
+    ansible_winrm_server_cert_validation: ignore
+
+  tasks:
+
+  - name: Test connectivity
+    win_ping:

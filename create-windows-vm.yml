@@ -1,0 +1,114 @@
+- hosts: localhost
+  connection: local
+
+  vars:
+    prefix: demo
+    username: azureuser
+    location: eastus
+
+  tasks:
+
+  - name: Prompt for password
+    pause:
+      prompt: "Enter the local admin password"
+      echo: no
+    when: password is undefined
+    register: password_input
+
+  - name: Set local admin password fact
+    set_fact:
+      password: "{{ password_input.user_input }}"
+    when: password is undefined
+
+  - name: Windows - create public IP address
+    azure_rm_publicipaddress:
+      resource_group: "{{ prefix }}-rg"
+      allocation_method: Static
+      name: "{{ prefix }}-win-pip"
+    register: ip_address
+
+  - name: Windows VM public IP
+    debug:
+      msg: "The public IP is {{ ip_address.state.ip_address }}"
+  
+  - name: Windows - create allow RDP,WinRM,HTTP nsg
+    azure_rm_securitygroup:
+      resource_group: "{{ prefix }}-rg"
+      name: "{{ prefix }}-win-nsg"
+      rules:
+        - name: 'allow_rdp'
+          protocol: Tcp
+          destination_port_range: 3389
+          access: Allow
+          priority: 1001
+          direction: Inbound
+        - name: 'allow_web_traffic'
+          protocol: Tcp
+          destination_port_range:
+            - 80
+            - 443
+          access: Allow
+          priority: 1002
+          direction: Inbound
+        - name: 'allow_powershell_remoting'
+          protocol: Tcp
+          destination_port_range: 
+            - 5985
+            - 5986
+          access: Allow
+          priority: 1003
+          direction: Inbound
+
+  - name: WIndows - create a NIC
+    azure_rm_networkinterface:
+      name: "{{ prefix }}-win-nic"
+      resource_group: "{{ prefix }}-rg"
+      virtual_network: "{{ prefix }}-vnet"
+      subnet_name: "{{ prefix }}-subnet"
+      security_group: "{{ prefix }}-win-nsg"
+      ip_configurations:
+        - name: default
+          public_ip_address_name: "{{ prefix }}-win-pip"
+          primary: True
+
+  - name: Windows - create VM
+    azure_rm_virtualmachine:
+      resource_group: "{{ prefix }}-rg"
+      name: "{{ prefix }}-win-vm"
+      vm_size: Standard_DS1_v2
+      admin_username: azureuser
+      admin_password: "{{ password }}"
+      network_interfaces: "{{ prefix }}-win-nic"
+      os_type: Windows
+      image:
+          offer: WindowsServer
+          publisher: MicrosoftWindowsServer
+          sku: 2019-Datacenter
+          version: latest
+    no_log: true
+
+  - name: Windows - Enable HTTPS WinRM listener
+    azure_rm_virtualmachineextension:
+      name: winrm-extension
+      resource_group: "{{ prefix }}-rg"
+      virtual_machine_name: "{{ prefix }}-win-vm"
+      publisher: Microsoft.Compute
+      virtual_machine_extension_type: CustomScriptExtension
+      type_handler_version: '1.9'
+      settings: '{"fileUris": ["https://raw.githubusercontent.com/ansible/ansible/devel/examples/scripts/ConfigureRemotingForAnsible.ps1"],"commandToExecute": "powershell -ExecutionPolicy Unrestricted -File ConfigureRemotingForAnsible.ps1"}'
+      auto_upgrade_minor_version: true
+
+  - name: Get facts Windows Public IP
+    azure_rm_publicipaddress_info:
+      resource_group: "{{ prefix }}-rg"
+      name: "{{ prefix }}-win-pip"
+    register: publicipaddresses
+
+  - name: set public Ip address fact
+    set_fact: publicipaddress="{{ publicipaddresses | json_query('publicipaddresses[0].ip_address') }}"
+
+  - name: wait for the WinRM port to come online
+    wait_for:
+      port: 5986
+      host: '{{ publicipaddress }}'
+      timeout: 600

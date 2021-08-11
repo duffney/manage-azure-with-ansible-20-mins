@@ -1,0 +1,16 @@
+- hosts: linux
+  gather_facts: false
+
+  vars_prompt:
+    - name: password
+      prompt: "Enter local administrator password"
+
+  vars:
+    ansible_ssh_common_args: '-o StrictHostKeyChecking=no'
+    ansible_user: azureuser
+    ansible_password: "{{ password }}"
+
+  tasks:
+
+  - name: Test connectivity
+    ping:

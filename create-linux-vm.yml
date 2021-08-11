@@ -1,0 +1,79 @@
+- hosts: localhost
+  connection: localhost
+  
+  vars:
+    prefix: demo
+    username: azureuser
+    location: eastus
+
+  tasks:
+
+  - name: Prompt for password
+    pause:
+      prompt: "Enter the local admin password"
+      echo: no
+    when: password is undefined
+    register: password_input
+
+  - name: Set local admin password fact
+    set_fact:
+      password: "{{ password_input.user_input }}"
+    when: password is undefined
+
+  - name: Linux - create public Ip
+    azure_rm_publicipaddress:
+      resource_group: "{{ prefix }}-rg"
+      allocation_method: Static
+      name: "{{ prefix }}-linux-pip"
+    register: output_ip_address
+  
+  - name: Output public IP
+    debug:
+      msg: "The public IP is {{ output_ip_address.state.ip_address }}."
+  
+  - name: Linux - create allow SSH and HTTP nsg
+    azure_rm_securitygroup:
+      resource_group: "{{ prefix }}-rg"
+      name: "{{ prefix }}-nix-nsg"
+      rules:
+        - name: SSH
+          protocol: Tcp
+          destination_port_range: 22
+          access: Allow
+          priority: 1001
+          direction: Inbound
+        - name: 'allow_web_traffic'
+          protocol: Tcp
+          destination_port_range:
+            - 80
+            - 443
+          access: Allow
+          priority: 1002
+          direction: Inbound
+  
+  - name: Create virtual NIC
+    azure_rm_networkinterface:
+      resource_group: "{{ prefix }}-rg"
+      name: "{{ prefix }}-linux-nic"
+      virtual_network: "{{ prefix }}-vnet"
+      subnet: "{{ prefix }}-subnet"
+      security_group: "{{ prefix }}-nix-nsg"
+      ip_configurations:
+        - name: default
+          public_ip_address_name: "{{ prefix }}-linux-pip"
+          primary: True
+
+  - name: Create Linux VM
+    azure_rm_virtualmachine:
+      resource_group: "{{ prefix }}-rg"
+      name: "{{ prefix }}-linux-vm"
+      vm_size: Standard_DS1_v2
+      admin_username: "{{ username }}"
+      admin_password: "{{ password }}"
+      network_interfaces: "{{ prefix }}-linux-nic"
+      image:
+        offer: CentOS
+        publisher: OpenLogic
+        sku: '7.7'
+        version: latest
+    no_log: true

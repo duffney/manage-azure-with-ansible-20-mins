@@ -1,0 +1,12 @@
+- hosts: localhost
+  gather_facts: false
+  connection: localhost
+
+- name: Create resource group and v-net
+  import_playbook: create-network.yml
+
+- name: Deploy Linux VM
+  import_playbook: create-linux-vm.yml
+
+- name: Deploy Windows VM
+  import_playbook: create-windows-vm.yml

@@ -1,0 +1,6 @@
+---
+- name: '[Linux] configure nginx'
+  import_playbook: configure-nginx.yml
+
+- name: '[Windows] configure IIS'
+  import_playbook: configure-iis.yml

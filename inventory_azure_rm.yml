@@ -1,0 +1,11 @@
+plugin: azure_rm
+include_vm_resource_groups:
+  - demo-rg
+auth_source: auto
+plain_host_names: yes
+# conditional_groups:
+#   linux: "'linux' in os_profile.system"
+#   windows: "'windows' in os_profile.system"
+keyed_groups:
+  - key: os_profile.system
+    separator: ""
